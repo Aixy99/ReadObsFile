@@ -18,5 +18,19 @@
     <ClInclude Include="rinex.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="utility.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="rinex.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="test.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="utility.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
