@@ -3,6 +3,35 @@
 
 const char syscodes[] = "GREJSCI";				//卫星系统代码
 const char obscodes[] = "CLDS";					//观测类型码
+/*设置索引
+* 索引的结构如下:
+*	0	|	01	02	03	04	11	12	14	23	24	33
+* 最前面的 0 代表卫星系统的代号,如 0 : GPS
+*		0也是二维数组的行号
+* 后面的数字均由两位组成
+*		其中第一位代表观测类型(CLDS),
+*		第二位为观测的频道
+*		例如: 01表示 C1_
+*/
+static void setInd(const char tobs[SYSNUM][MAXOBSTYPE][4], int ind[SYSNUM][36]) {
+	char type;		//观测数据类型(CLDS)
+	int channel = 0;	//频道
+	for(int i = 0; i < SYSNUM; i++){	//遍历每个系统
+		for (int j = 0; ; j++) {		//遍历每个观测类型
+			if (tobs[i][j][0] == 0) break;
+			type = tobs[i][j][0];
+			channel = str2num(tobs[i][j], 1, 1);
+
+			switch (type) {
+				case 'C':	type = _C; break;
+				case 'L':	type = _L; break;
+				case 'D':	type = _D; break;
+				case 'S':	type = _S; break;
+			}
+			ind[i][j] = type * 10 + channel;
+		}
+	}
+}
 
 /*读取O文件头*/
 extern void readObsFileH(FILE *file, char *type, char *buff, char tobs[][MAXOBSTYPE][4]) {
@@ -34,18 +63,41 @@ extern void readObsFileH(FILE *file, char *type, char *buff, char tobs[][MAXOBST
 }
 
 /*读取o文件体*/
-extern void readObsFileB() {
+extern void readObsFileB(FILE* file, char* buff, const char tobs[][MAXOBSTYPE][4], int ind[7][36], obs_t *obs) {
 	printf("readObsFileB()\n");//调试
+
+	int ns = 0;			//卫星数量
+	int satNum;			//卫星编号
+	gtime_t time = { 0 };	//历元
+	setInd(tobs, ind);	//设置索引
+	int i = 0;			//当前卫星序数
+	int n = 0;			//当前历元序数
+
+	while (fgets(buff, 1024, file)) {
+		if (strstr(buff, "> ")) {
+			str2time(buff, 2, 27, &time);
+			ns = str2num(buff, 32, 3);
+			i = 0;
+		} else {
+			for (; i < ns; i++) {
+				char satCode[4];	//卫星代码
+				setstr(satCode, buff, 3);
+				satNum = setSatNum(satCode);
+			}
+		}
+	}
 }
 
 /*读取o文件*/
 extern void readObsFile(char *file) {
 	printf("readObsFile()\n");//调试
 
+	obs_t obs;						//观测数据
 	FILE* fp;						//文件指针
 	char type;						//文件类型
 	char buff[1024];				//用于存储当前行
-	char tobs[7][MAXOBSTYPE][4] = { {0} };	//观测类型
+	char tobs[SYSNUM][MAXOBSTYPE][4] = { {0} };	//观测类型
+	int ind[SYSNUM][36] = { {0} };		//观测类型索引
 
 	fp = fopen(file, "r");
 	if (fp != NULL) {
@@ -58,5 +110,5 @@ extern void readObsFile(char *file) {
 	//读取文件头
 	readObsFileH(fp, &type, buff, tobs);
 	//读取文件体
-	readObsFileB();
+	readObsFileB(fp, buff, tobs, ind, &obs);
 }
