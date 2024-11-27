@@ -34,8 +34,10 @@ static void setInd(const char tobs[SYSNUM][MAXOBSTYPE][4], int ind[SYSNUM][36]) 
 }
 
 /*初始化obs*/
-static void initObs(obs_t* obs) {
+static void initObs(obs_t* obs, int* satSum) {
 	memset(obs, 0, sizeof(obs_t));
+	obs->data = malloc((2800 * (*satSum) * sizeof(obsd_t)));
+	memset(obs->data, 0, sizeof(obsd_t));
 }
 
 /*解码索引*/
@@ -66,7 +68,7 @@ static int decode_ind(const int tInd, const int ind[7][36], int *type, int *chan
 }
 
 /*读取O文件头*/
-extern void readObsFileH(FILE *file, char *type, char *buff, char tobs[][MAXOBSTYPE][4]) {
+extern void readObsFileH(FILE *file, char *type, char *buff, char tobs[][MAXOBSTYPE][4], int *satSum) {
 	while (fgets(buff, 1024, file)) {
 		if (strstr(buff, "RINEX VERSION / TYPE")) {
 			*type = *(buff + 20);
@@ -86,6 +88,8 @@ extern void readObsFileH(FILE *file, char *type, char *buff, char tobs[][MAXOBST
 				}
 			}
 			*tobs[i][nt] = 0;
+		} else if (strstr(buff,"# OF SATELLITES")) {
+			*satSum = str2num(buff, 0, 6);
 		} else if (strstr(buff, "END OF HEADER")) {
 			break;
 		}
@@ -93,7 +97,7 @@ extern void readObsFileH(FILE *file, char *type, char *buff, char tobs[][MAXOBST
 }
 
 /*读取o文件体*/
-extern void readObsFileB(FILE* file, char* buff, const char tobs[][MAXOBSTYPE][4], int ind[7][36], obs_t *o) {
+extern void readObsFileB(FILE* file, char* buff, const char tobs[][MAXOBSTYPE][4], int ind[7][36], obs_t *o, int* satSum) {
 	obs_t obs;
 	int ns = 0;			//当前历元卫星数量
 	int satNum;			//卫星编号
@@ -103,50 +107,43 @@ extern void readObsFileB(FILE* file, char* buff, const char tobs[][MAXOBSTYPE][4
 	int n = 0;			//当前历元序数
 	double val = 0;		//用来临时保存值
 
-	initObs(&obs);
+	initObs(&obs, satSum);
 	while (fgets(buff, 1024, file)) {
 		if (strstr(buff, "> ")) {
-			printf("%s\n", buff);
 			str2time(buff, 2, 27, &time);
 			ns = str2num(buff, 32, 3);
-			obs.data = realloc(obs.data, ns * sizeof(obsd_t));	//分配空间
-			if (obs.data == 0) return;
-			//memset(obs.data + obs.n, 0, ns * sizeof(obsd_t));	//将新分配的空间置零
-			obs.n += ns;
 		} else {
-			for (int j = 0; j < ns; j++, i++) {
-				printf("%s\n", buff);
-				printf("obs.n = %d\t i = %d  \tj = %d\n", obs.n, i, j);//
-				char satCode[4];	//卫星代码
-				setstr(satCode, buff, 3);
-				satNum = setSatNum(satCode);
-				obs.data[i].sat = satNum;	//记录卫星编号
-				obs.data[i].time = time;	//记录时间
+			char satCode[4];	//卫星代码
+			setstr(satCode, buff, 3);
+			satNum = setSatNum(satCode);
+			obs.data[i].sat = satNum;	//记录卫星编号
+			obs.data[i].time = time;	//记录时间
 
-				int type;		//数据类型
-				int channel;	//通道
+			int type;		//数据类型
+			int channel;	//通道
 
-				int tInd = 0;	//类型索引
-				while (decode_ind(tInd, ind, &type, &channel, satCode[0])) {
-					val = str2num(buff, 3 + 16 * tInd++, 14);	//读取当前值
+			int tInd = 0;	//类型索引
+			while (decode_ind(tInd, ind, &type, &channel, satCode[0])) {
+				val = str2num(buff, 3 + 16 * tInd++, 14);	//读取当前值
 
-					if (type == _C) {
-						obs.data[i].P[channel] = val;
-					} else if (type == _L) {
-						obs.data[i].L[channel] = val;
-					} else if (type == _D) {
-						obs.data[i].D[channel] = val;
-					} else if (type == _S) {
-						obs.data[i].SNR[channel] = val;
-					}
-				}
-				if (j != ns - 1) {
-					fgets(buff, 1024, file);
+				if (type == _C) {
+					obs.data[i].P[channel] = val;
+				} else if (type == _L) {
+					obs.data[i].L[channel] = val;
+				} else if (type == _D) {
+					obs.data[i].D[channel] = val;
+				} else if (type == _S) {
+					obs.data[i].SNR[channel] = val;
 				}
 			}
+			i++;
 		}
 	}
+
+	o->data = obs.data;
+	o->n = i + 1;
 }
+
 
 /*读取o文件*/
 extern void readObsFile(char *file) {
@@ -156,7 +153,7 @@ extern void readObsFile(char *file) {
 	char buff[1024];				//用于存储当前行
 	char tobs[SYSNUM][MAXOBSTYPE][4] = { {0} };	//观测类型
 	int ind[SYSNUM][36] = { {0} };		//观测类型索引
-
+	int satSum = 0;					//有观测值的卫星数量
 	fp = fopen(file, "r");
 	if (fp != NULL) {
 		printf("文件打开成功\n");
@@ -166,7 +163,7 @@ extern void readObsFile(char *file) {
 	}
 
 	//读取文件头
-	readObsFileH(fp, &type, buff, tobs);
+	readObsFileH(fp, &type, buff, tobs, &satSum);
 	//读取文件体
-	readObsFileB(fp, buff, tobs, ind, &obs);
+	readObsFileB(fp, buff, tobs, ind, &obs, &satSum);
 }

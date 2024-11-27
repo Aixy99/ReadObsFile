@@ -51,12 +51,12 @@ typedef struct {	//观测数据记录
 } obsd_t;
 
 typedef struct {	//观测数据
-	uint n;				//历元个数
+	uint n;				//数据个数
 	obsd_t *data;		//数据
 } obs_t;
 
 //函数声明
-extern void readObsFileH(FILE* file, char* type, char* buff, char tobs[][MAXOBSTYPE][4]);
-extern void readObsFileB(FILE* file, char* buff, const char tobs[][MAXOBSTYPE][4], int ind[7][36]);
+extern void readObsFileH(FILE* file, char* type, char* buff, char tobs[][MAXOBSTYPE][4], int* satSum);
+extern void readObsFileB(FILE* file, char* buff, const char tobs[][MAXOBSTYPE][4], int ind[7][36], int* satSum);
 extern void readObsFile(char* file);
 #endif  // !RINEX_H
