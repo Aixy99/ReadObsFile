@@ -146,7 +146,7 @@ extern void readObsFileB(FILE* file, char* buff, const char tobs[][MAXOBSTYPE][4
 
 
 /*读取o文件*/
-extern void readObsFile(char *file) {
+extern void readObsFile(char *file, obs_t *o) {
 	obs_t obs;						//观测数据
 	FILE* fp;						//文件指针
 	char type;						//文件类型
@@ -166,4 +166,6 @@ extern void readObsFile(char *file) {
 	readObsFileH(fp, &type, buff, tobs, &satSum);
 	//读取文件体
 	readObsFileB(fp, buff, tobs, ind, &obs, &satSum);
+
+	*o = obs;
 }

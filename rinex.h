@@ -58,5 +58,5 @@ typedef struct {	//观测数据
 //函数声明
 extern void readObsFileH(FILE* file, char* type, char* buff, char tobs[][MAXOBSTYPE][4], int* satSum);
 extern void readObsFileB(FILE* file, char* buff, const char tobs[][MAXOBSTYPE][4], int ind[7][36], int* satSum);
-extern void readObsFile(char* file);
+extern void readObsFile(char* file, obs_t* o);
 #endif  // !RINEX_H
