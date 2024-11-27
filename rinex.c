@@ -33,10 +33,40 @@ static void setInd(const char tobs[SYSNUM][MAXOBSTYPE][4], int ind[SYSNUM][36]) 
 	}
 }
 
+/*初始化obs*/
+static void initObs(obs_t* obs) {
+	memset(obs, 0, sizeof(obs_t));
+}
+
+/*解码索引*/
+static int decode_ind(const int tInd, const int ind[7][36], int *type, int *channel, char satCode) {
+	int sysInd;		//系统索引
+	switch (satCode) {
+		case 'G':	sysInd = G; break;
+		case 'R':	sysInd = R; break;
+		case 'E':	sysInd = E; break;
+		case 'J':	sysInd = J; break;
+		case 'S':	sysInd = S; break;
+		case 'C':	sysInd = C; break;
+		case 'I':	sysInd = I; break;
+	}
+
+	if (ind[sysInd][tInd] == 0) return 0;
+
+	*type = ind[sysInd][tInd] / 10;
+	const int frqcode[7] = { 1,2,5,6,7,8,9 };
+	for (int i = 0; i < 7; i++) {
+		if (ind[sysInd][tInd] % 10 == frqcode[i]) {
+			*channel = i;
+			break;
+		}
+	}
+
+	return 1;
+}
+
 /*读取O文件头*/
 extern void readObsFileH(FILE *file, char *type, char *buff, char tobs[][MAXOBSTYPE][4]) {
-	printf("readObsFileH()\n");//调试
-
 	while (fgets(buff, 1024, file)) {
 		if (strstr(buff, "RINEX VERSION / TYPE")) {
 			*type = *(buff + 20);
@@ -63,26 +93,56 @@ extern void readObsFileH(FILE *file, char *type, char *buff, char tobs[][MAXOBST
 }
 
 /*读取o文件体*/
-extern void readObsFileB(FILE* file, char* buff, const char tobs[][MAXOBSTYPE][4], int ind[7][36], obs_t *obs) {
-	printf("readObsFileB()\n");//调试
-
-	int ns = 0;			//卫星数量
+extern void readObsFileB(FILE* file, char* buff, const char tobs[][MAXOBSTYPE][4], int ind[7][36], obs_t *o) {
+	obs_t obs;
+	int ns = 0;			//当前历元卫星数量
 	int satNum;			//卫星编号
 	gtime_t time = { 0 };	//历元
 	setInd(tobs, ind);	//设置索引
-	int i = 0;			//当前卫星序数
+	static int i = 0;	//当前保存序数
 	int n = 0;			//当前历元序数
+	double val = 0;		//用来临时保存值
 
+	initObs(&obs);
 	while (fgets(buff, 1024, file)) {
 		if (strstr(buff, "> ")) {
+			printf("%s\n", buff);
 			str2time(buff, 2, 27, &time);
 			ns = str2num(buff, 32, 3);
-			i = 0;
+			obs.data = realloc(obs.data, ns * sizeof(obsd_t));	//分配空间
+			if (obs.data == 0) return;
+			//memset(obs.data + obs.n, 0, ns * sizeof(obsd_t));	//将新分配的空间置零
+			obs.n += ns;
 		} else {
-			for (; i < ns; i++) {
+			for (int j = 0; j < ns; j++, i++) {
+				printf("%s\n", buff);
+				printf("obs.n = %d\t i = %d  \tj = %d\n", obs.n, i, j);//
 				char satCode[4];	//卫星代码
 				setstr(satCode, buff, 3);
 				satNum = setSatNum(satCode);
+				obs.data[i].sat = satNum;	//记录卫星编号
+				obs.data[i].time = time;	//记录时间
+
+				int type;		//数据类型
+				int channel;	//通道
+
+				int tInd = 0;	//类型索引
+				while (decode_ind(tInd, ind, &type, &channel, satCode[0])) {
+					val = str2num(buff, 3 + 16 * tInd++, 14);	//读取当前值
+
+					if (type == _C) {
+						obs.data[i].P[channel] = val;
+					} else if (type == _L) {
+						obs.data[i].L[channel] = val;
+					} else if (type == _D) {
+						obs.data[i].D[channel] = val;
+					} else if (type == _S) {
+						obs.data[i].SNR[channel] = val;
+					}
+				}
+				if (j != ns - 1) {
+					fgets(buff, 1024, file);
+				}
 			}
 		}
 	}
@@ -90,8 +150,6 @@ extern void readObsFileB(FILE* file, char* buff, const char tobs[][MAXOBSTYPE][4
 
 /*读取o文件*/
 extern void readObsFile(char *file) {
-	printf("readObsFile()\n");//调试
-
 	obs_t obs;						//观测数据
 	FILE* fp;						//文件指针
 	char type;						//文件类型

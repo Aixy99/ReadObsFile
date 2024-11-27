@@ -2,6 +2,7 @@
 #define RINEX_H
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 typedef unsigned int uint;
 typedef enum {			//卫星系统
@@ -33,7 +34,7 @@ typedef enum {			//观测类型
 #define MAXSBSNUM 128							//SBS卫星最大数量
 #define MAXBDSNUM 128							//BDS卫星最大数量
 #define MAXIRNNUM 128							//IRN卫星最大数量
-											
+#define MAXSUMNUM MAXGPSNUM + MAXGLONUM + MAXGALNUM + MAXQZSNUM + MAXSBSNUM + MAXBDSNUM + MAXIRNNUM + 128	//最大卫星总数
 //结构体定义
 typedef struct {	// 时间结构
 	time_t time;    // 由标准time_t表示的时间 (s)
@@ -51,7 +52,7 @@ typedef struct {	//观测数据记录
 
 typedef struct {	//观测数据
 	uint n;				//历元个数
-	obsd_t data[2880];	//数据
+	obsd_t *data;		//数据
 } obs_t;
 
 //函数声明
