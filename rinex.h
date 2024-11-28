@@ -25,7 +25,7 @@ typedef enum {			//观测类型
 
 
 //常量定义
-#define MAXCHANNELNUM 7							//最大通道数量
+#define MAXCHANNELNUM 7							//最大频道数量
 #define MAXOBSTYPE 64							//最大观测类型数量
 #define MAXGPSNUM 128							//GPS卫星最大数量
 #define MAXGLONUM 128							//GLO卫星最大数量
@@ -34,7 +34,8 @@ typedef enum {			//观测类型
 #define MAXSBSNUM 128							//SBS卫星最大数量
 #define MAXBDSNUM 128							//BDS卫星最大数量
 #define MAXIRNNUM 128							//IRN卫星最大数量
-#define MAXSUMNUM MAXGPSNUM + MAXGLONUM + MAXGALNUM + MAXQZSNUM + MAXSBSNUM + MAXBDSNUM + MAXIRNNUM + 128	//最大卫星总数
+#define MAXSATNUM MAXGPSNUM + MAXGLONUM + MAXGALNUM + MAXQZSNUM + MAXSBSNUM + MAXBDSNUM + MAXIRNNUM + 128	//最大卫星总数
+
 //结构体定义
 typedef struct {	// 时间结构
 	time_t time;    // 由标准time_t表示的时间 (s)
@@ -56,7 +57,5 @@ typedef struct {	//观测数据
 } obs_t;
 
 //函数声明
-extern void readObsFileH(FILE* file, char* type, char* buff, char tobs[][MAXOBSTYPE][4], int* satSum);
-extern void readObsFileB(FILE* file, char* buff, const char tobs[][MAXOBSTYPE][4], int ind[7][36], int* satSum);
 extern void readObsFile(char* file, obs_t* o);
 #endif  // !RINEX_H

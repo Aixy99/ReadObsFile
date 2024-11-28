@@ -68,7 +68,7 @@ static int decode_ind(const int tInd, const int ind[7][36], int *type, int *chan
 }
 
 /*读取O文件头*/
-extern void readObsFileH(FILE *file, char *type, char *buff, char tobs[][MAXOBSTYPE][4], int *satSum) {
+static void readObsFileH(FILE *file, char *type, char *buff, char tobs[][MAXOBSTYPE][4], int *satSum) {
 	while (fgets(buff, 1024, file)) {
 		if (strstr(buff, "RINEX VERSION / TYPE")) {
 			*type = *(buff + 20);
@@ -97,7 +97,7 @@ extern void readObsFileH(FILE *file, char *type, char *buff, char tobs[][MAXOBST
 }
 
 /*读取o文件体*/
-extern void readObsFileB(FILE* file, char* buff, const char tobs[][MAXOBSTYPE][4], int ind[7][36], obs_t *o, int* satSum) {
+static void readObsFileB(FILE* file, char* buff, const char tobs[][MAXOBSTYPE][4], int ind[7][36], obs_t *o, int* satSum) {
 	obs_t obs;
 	int ns = 0;			//当前历元卫星数量
 	int satNum;			//卫星编号
